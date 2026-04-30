@@ -155,3 +155,65 @@ CPUInfer[0x28552090]: Goodbye
 ((kt_kernel_env) ) lst@SeungTak-Lee:~/kTransformers_model_serving$ 
 
 ```
+
+# kt version 확인
+```bash
+kt version
+
+[kt-kernel] Using environment override: avx2
+[kt-kernel] Selected CPU variant: avx2
+[kt-kernel] Multi-variant avx2 not found, using single-variant build
+[kt-kernel] Loading avx2 from: /home/solideos/kTransformers_model_serving/kt_kernel_env/lib/python3.12/site-packages/kt_kernel/kt_kernel_ext.cpython-312-x86_64-linux-gnu.so
+[kt-kernel] Successfully loaded AVX2 variant
+[kt-kernel] Extension module loaded: kt_kernel_ext
+
+KTransformers CLI v0.6.1.post1
+
+  Python      3.12.3
+  Platform    Linux 6.6.87.2-microsoft-standard-WSL2
+  CUDA        13.1
+
+Packages:
+
+  kt-kernel    0.6.1.post1
+  sglang-kt    Not installed
+
+
+SGLang is not installed
+
+Install SGLang (kvcache-ai fork) using one of these methods:
+
+Option A - One-click install (recommended):
+   From the ktransformers root directory, run:
+   ./install.sh
+
+Option B - pip install:
+   pip install sglang-kt
+
+Option C - From source:
+   git clone --recursive https://github.com/kvcache-ai/ktransformers.git
+   cd ktransformers
+   pip install "third_party/sglang/python"
+
+Note: Make sure to run these commands in the correct Python environment
+
+```
+
+자 그럼 추천 옵션인 ./install.sh로 sglang-kt를 설치하자.
+
+```bash
+ kt version
+
+KTransformers CLI v0.6.1.post1
+
+  Python      3.12.3
+  Platform    Linux 6.6.87.2-microsoft-standard-WSL2
+  CUDA        13.1
+
+Packages:
+
+  kt-kernel    0.6.1.post1
+  sglang-kt    0.6.1.post1 (sglang-kt)
+```
+
+확인됨
