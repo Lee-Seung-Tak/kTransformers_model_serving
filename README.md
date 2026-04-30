@@ -1,3 +1,11 @@
+**시작하기에 앞서** KTransformers가 뭐냐?
+
+    거대 MoE 모델을 GPU VRAM이 부족한 환경에서 굴리기 위한 CPU/GPU 이종 추론 프레임워크다.
+
+   핵심 아이디어는 Attention/dense 레이어와 자주 쓰이는 expert만 GPU에 올리고, 나머지 expert들은 CPU의 DRAM에 두고 
+   CPU에서 직접 연산해서 합치는 방식
+   ---
+
 # 파이썬 버전은 
 Python 3.10, 3.11 또는 3.12를 요구하나, 3.12로 맞춤.
 
