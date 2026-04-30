@@ -321,11 +321,11 @@ python -m sglang.launch_server \
 curl http://localhost:8000/v1/models
 
 # 간단한 추론 테스트
-curl http://localhost:8000/v1/chat/completions \
+curl -s http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "Qwen3.5",
-    "messages": [{"role": "user", "content": "한 줄로 자기소개 해봐"}],
-    "max_tokens": 100
-  }'
+    "messages": [{"role": "user", "content": "안녕, 한국어로 짧게 답해줘"}],
+    "max_tokens": 1000
+  }' | python3 -m json.tool
 ```
