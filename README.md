@@ -217,3 +217,115 @@ Packages:
 ```
 
 확인됨
+
+# 만약 내 컴퓨터가 h100이다 , 여러대이다, 그런데 빌드 시 nvcc이슈로 안된다고 한다?
+```
+nvcc fatal : Unsupported gpu architecture 'compute_89'  -> nvcc 버전이 너무 낮아서 그렇다.
+
+cat >> ~/.bashrc << 'EOF'
+
+# CUDA 12.8
+export PATH=/usr/local/cuda-12.8/bin:$PATH
+export CUDA_HOME=/usr/local/cuda-12.8
+export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64:$LD_LIBRARY_PATH
+EOF
+
+source ~/.bashrc
+
+이렇게 해서 12.8로 고정해주자. 그럼 됨.
+```
+
+그리고
+```bash
+cd ~/kTransformers_model_serving/ktransformers
+
+# 이전 빌드 흔적 제거 (중요! 안 지우면 옛날 결과 캐시됨)
+rm -rf kt-kernel/build kt-kernel/*.egg-info
+
+# CMake에 새 nvcc 경로 명시
+export CMAKE_ARGS="-DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.8/bin/nvcc"
+
+# 재빌드
+pip install ./kt-kernel --no-build-isolation
+```
+요로코롬 빌드 캐쉬 지우고 다시 해보자 그럼 된다.
+---
+
+# 모델 서빙해보자
+``` bash
+# ============================================
+# Qwen3.5-122B-A10B 서빙 (LLAMAFILE 백엔드)
+# ============================================
+
+python -m sglang.launch_server \
+  --host 0.0.0.0 \                                                              # 외부에서 접속 가능하게 모든 IP 허용
+  --port 8000 \                                                                 # API 포트 (필요시 변경)
+  --model /data/ai/models/Qwen3.5-122B-A10B \                                   # GPU용 원본 모델 (config + safetensors)
+  --kt-method LLAMAFILE \                                                       # CPU 백엔드 종류 (AMX 없을때 쓰는거, GGUF 사용)
+  --kt-weight-path /data/ai/models/Qwen3.5-122B-A10B-GGUF/UD-Q4_K_XL \          # CPU expert가 읽을 GGUF 가중치 경로
+  --kt-cpuinfer 24 \                                                            # CPU 추론 스레드 = 물리 코어 수 (48코어/2HT = 24)
+  --kt-threadpool-count 2 \                                                     # 스레드풀 개수 = NUMA 노드 수 (dual socket)
+  --kt-num-gpu-experts 128 \                                                    # GPU에 올릴 expert 수 (총 256개 중 절반)
+  --kt-max-deferred-experts-per-token 2 \                                       # 파이프라인 실행용 지연 expert 수 (CPU/GPU 동시 처리)
+  --trust-remote-code \                                                         # Qwen 커스텀 모델 코드 신뢰 (필수)
+  --mem-fraction-static 0.90 \                                                  # GPU 메모리의 90% 사용 (KV cache 등)
+  --chunked-prefill-size 4096 \                                                 # 긴 입력을 4096 토큰씩 쪼개서 처리
+  --served-model-name Qwen3.5 \                                                 # API 호출시 model 필드에 쓸 이름
+  --enable-mixed-chunk \                                                        # prefill + decode 섞어서 처리 (throughput 향상)
+  --tensor-parallel-size 2 \                                                    # H100 2장에 텐서 분산
+  --enable-p2p-check \                                                          # GPU간 P2P 통신 가능 여부 체크
+  --disable-shared-experts-fusion                                               # shared expert 융합 비활성화 (KT와 호환성 위해)
+```
+위가 된다면
+```
+# ============================================
+# 1단계: BF16 -> AMXINT8 가중치 변환 (한 번만)
+# ============================================
+
+# tmux 안에서 돌리는걸 추천 (30분~1시간 걸림)
+python ~/kTransformers_model_serving/ktransformers/kt-kernel/scripts/convert_cpu_weights.py \
+  --input-path /data/ai/models/Qwen3.5-122B-A10B \                              # 원본 BF16 모델 위치
+  --input-type bf16 \                                                           # 원본 dtype
+  --output /data/ai/models/Qwen3.5-122B-A10B-INT8 \                             # 변환된 INT8 저장 경로 (~122GB)
+  --quant-method int8                                                           # 양자화 방식 (int4도 가능하지만 정확도 ↓)
+
+
+# ============================================
+# 2단계: AMXINT8 백엔드로 서빙 (변환 끝난 후)
+# ============================================
+
+python -m sglang.launch_server \
+  --host 0.0.0.0 \                                                              # 외부 접속 허용
+  --port 8000 \                                                                 # API 포트
+  --model /data/ai/models/Qwen3.5-122B-A10B \                                   # GPU용 원본 (config 읽고 GPU expert 가중치 가져감)
+  --kt-method AMXINT8 \                                                         # AMX INT8 백엔드 (Sapphire Rapids 가속)
+  --kt-weight-path /data/ai/models/Qwen3.5-122B-A10B-INT8 \                     # 변환된 INT8 가중치 (LLAMAFILE때랑 다름!)
+  --kt-cpuinfer 24 \                                                            # 물리 코어 수
+  --kt-threadpool-count 2 \                                                     # NUMA 노드 수
+  --kt-num-gpu-experts 128 \                                                    # GPU에 올릴 expert 수
+  --kt-max-deferred-experts-per-token 2 \                                       # 파이프라인 지연 expert
+  --trust-remote-code \                                                         # 커스텀 모델 코드 허용
+  --mem-fraction-static 0.90 \                                                  # GPU 메모리 90% 사용
+  --chunked-prefill-size 4096 \                                                 # prefill chunk size
+  --served-model-name Qwen3.5 \                                                 # API에서 부를 모델명
+  --enable-mixed-chunk \                                                        # prefill+decode 혼합
+  --tensor-parallel-size 2 \                                                    # H100 2장 분산
+  --enable-p2p-check \                                                          # P2P 통신 체크
+  --disable-shared-experts-fusion                                               # shared expert 융합 OFF
+```
+이렇게 해보자
+
+*동작테스트*는 이렇게
+```
+# 모델 리스트 확인 (서버 정상 동작 체크)
+curl http://localhost:8000/v1/models
+
+# 간단한 추론 테스트
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "Qwen3.5",
+    "messages": [{"role": "user", "content": "한 줄로 자기소개 해봐"}],
+    "max_tokens": 100
+  }'
+```
