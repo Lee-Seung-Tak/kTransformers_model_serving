@@ -16,6 +16,10 @@ Python 3.10, 3.11 또는 3.12를 요구하나, 3.12로 맞춤.
 2. source kt_kernel_env/bin/activate
 ```
 ---
+# model down
+```
+hf download Qwen/Qwen3.5-122B-A10B-FP8 --local-dir Qwen3.5-122B-A10B-FP8
+```
 
 # kt_kerner docs
 ```
@@ -274,8 +278,8 @@ python -m sglang.launch_server \
   --enable-mixed-chunk \
   --tensor-parallel-size 2 \
   --enable-p2p-check \
-  --disable-shared-experts-fusion
-
+  --disable-shared-experts-fusion \
+  --reasoning-parser qwen3
 [ 해석 ]
 python -m sglang.launch_server \
   --host 0.0.0.0 \                                                              # 외부에서 접속 가능하게 모든 IP 허용
@@ -295,6 +299,33 @@ python -m sglang.launch_server \
   --tensor-parallel-size 2 \                                                    # H100 2장에 텐서 분산
   --enable-p2p-check \                                                          # GPU간 P2P 통신 가능 여부 체크
   --disable-shared-experts-fusion                                               # shared expert 융합 비활성화 (KT와 호환성 위해)
+
+  ---
+  LLAMAFILE말고  FP8로 돌리려면
+  LLAMAFILE = lamacpp기반의 범용 CPU 백엔드 사용해서 느림
+  FP8:       AVX512_BF16 (한 번에 32개 곱셈)
+  python -m sglang.launch_server \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --model /data/ai/models/Qwen3.5-122B-A10B-FP8 \
+  --kt-method FP8 \
+  --kt-weight-path /data/ai/models/Qwen3.5-122B-A10B-FP8 \
+  --kt-cpuinfer 24 \
+  --kt-threadpool-count 2 \
+  --kt-num-gpu-experts 128 \
+  --kt-max-deferred-experts-per-token 2 \
+  --kt-gpu-prefill-token-threshold 2048 \
+  --kt-enable-dynamic-expert-update \
+  --kt-expert-placement-strategy uniform \
+  --trust-remote-code \
+  --mem-fraction-static 0.90 \
+  --chunked-prefill-size 4096 \
+  --served-model-name Qwen3.5-122B-A10B \
+  --enable-mixed-chunk \
+  --tensor-parallel-size 2 \
+  --enable-p2p-check \
+  --disable-shared-experts-fusion \
+  --reasoning-parser qwen3
 ```
 위가 된다면
 ```
