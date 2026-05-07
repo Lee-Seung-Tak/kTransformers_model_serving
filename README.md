@@ -326,7 +326,7 @@ python -m sglang.launch_server \
   --tensor-parallel-size 2 \
   --enable-p2p-check \
   --disable-shared-experts-fusion \
-  --reasoning-parser qwen3
+  --reasoning-parser qwen3 \
   --tool-call-parser qwen3_coder
 ```
 위가 된다면
