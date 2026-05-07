@@ -280,6 +280,7 @@ python -m sglang.launch_server \
   --enable-p2p-check \
   --disable-shared-experts-fusion \
   --reasoning-parser qwen3
+
 [ 해석 ]
 python -m sglang.launch_server \
   --host 0.0.0.0 \                                                              # 외부에서 접속 가능하게 모든 IP 허용
@@ -312,7 +313,7 @@ python -m sglang.launch_server \
   --kt-weight-path /data/ai/models/Qwen3.5-122B-A10B-FP8 \
   --kt-cpuinfer 24 \
   --kt-threadpool-count 2 \
-  --kt-num-gpu-experts 128 \
+  --kt-num-gpu-experts 24 \
   --kt-max-deferred-experts-per-token 2 \
   --kt-gpu-prefill-token-threshold 2048 \
   --kt-enable-dynamic-expert-update \
@@ -326,6 +327,7 @@ python -m sglang.launch_server \
   --enable-p2p-check \
   --disable-shared-experts-fusion \
   --reasoning-parser qwen3
+  --tool-call-parser qwen3_coder
 ```
 위가 된다면
 ```
@@ -352,7 +354,7 @@ python -m sglang.launch_server \
   --kt-weight-path /data/ai/models/Qwen3.5-122B-A10B-INT8 \
   --kt-cpuinfer 24 \
   --kt-threadpool-count 2 \
-  --kt-num-gpu-experts 128 \
+  --kt-num-gpu-experts 32 \
   --kt-max-deferred-experts-per-token 2 \
   --trust-remote-code \
   --mem-fraction-static 0.90 \
